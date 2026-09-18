@@ -26,16 +26,21 @@ dApp をブラウザ自動化（agent-browser / Playwright / Puppeteer / claude-
 ```
 wallet-shim/
 ├── SKILL.md                  # スキル本体（エージェント向け手順、トリガー語、注意事項）
-├── package.json              # type: module。deps: @noble/secp256k1, @noble/hashes。devDeps: esbuild, vitest
+├── README.md                 # クイックスタートと検証状況
+├── package.json              # type: module。deps: @noble/curves, @noble/hashes。devDeps: esbuild, vitest, puppeteer-core, viem, serve
 ├── bin/
-│   └── wallet-shim.mjs       # CLI。dist/shim.js に設定を差し込んで出力（Node 20+）
+│   └── wallet-shim.mjs       # CLI 入口。`src/cli/index.js` の runCli を呼ぶだけ（Node 20+）
 ├── src/
-│   ├── index.js              # エントリ。config を読み、chains を初期化
+│   ├── index.js              # ブラウザ側ブートストラップ。window.__WALLET_SHIM_CONFIG__ を読んで createShim を呼ぶ
+│   ├── shim.js                # createShim。chain モジュールを解決して provider を組み立てる本体
+│   ├── cli/
+│   │   └── index.js          # runCli。引数解析・鍵の生成/読み込み・dist/shim.js への設定注入・出力
 │   ├── core/
 │   │   ├── config.js         # window.__WALLET_SHIM_CONFIG__ の読み込みと既定値
 │   │   ├── emitter.js        # EIP-1193 準拠の on/removeListener/emit
 │   │   ├── router.js         # method → handler 解決、overrides、passthrough
 │   │   ├── passthrough.js    # 実 RPC への fetch 転送
+│   │   ├── errors.js         # ProviderRpcError とエラーコード別メッセージ表
 │   │   └── log.js            # console への統一ログ + window.__WALLET_SHIM__.calls 記録
 │   ├── chains/
 │   │   └── evm/
@@ -47,6 +52,9 @@ wallet-shim/
 │       └── evm.js            # keccak256 + secp256k1（noble 経由）、address 導出、personal_sign / typedData v4
 ├── dist/
 │   └── shim.js               # ビルド成果物（コミットする）
+├── scripts/
+│   ├── build.mjs              # esbuild で src/index.js → dist/shim.js（IIFE）
+│   └── build-fixture.mjs      # esbuild で viem をローカルバンドルし test/fixture/vendor/viem.js を生成
 ├── recipes/
 │   ├── agent-browser.md      # --init-script / addinitscript / eval の3経路
 │   ├── playwright.md         # addInitScript
@@ -54,9 +62,14 @@ wallet-shim/
 │   ├── claude-in-chrome.md   # javascript_tool（ロード後注入の制約つき）
 │   └── devtools.md           # 手貼り
 ├── test/
-│   ├── unit/                 # vitest。provider.request() を Node 上で直接叩く
-│   ├── fixture/index.html    # 検証用の最小 dApp（viem を CDN から読み、接続→署名→送信を実行）
-│   └── e2e.md                # 手動 E2E 手順
+│   ├── unit/                  # vitest。provider.request() を Node 上で直接叩く
+│   │   └── helpers/evm.js     # 署名検証などユニットテスト共通ヘルパー
+│   ├── fixture/
+│   │   ├── index.html         # 検証用の最小 dApp（接続→署名→送信→レシートを実行）
+│   │   ├── viem-entry.js      # build-fixture.mjs のバンドル入口（viem の再エクスポート）
+│   │   └── vendor/            # build-fixture.mjs の生成物（viem.js）。gitignore 対象
+│   ├── e2e.mjs                 # puppeteer-core による自動 E2E（load-before / load-after）
+│   └── e2e.md                 # 手動 agent-browser E2E 手順（未検証、参考用）
 └── docs/superpowers/specs/   # 本設計書
 ```
 
@@ -86,7 +99,7 @@ announce の `info` は `{ uuid, name, rdns, icon }`。既定は `name: "MetaMas
 | `net_version` | `chainId` の10進文字列 |
 | `wallet_switchEthereumChain` | 既知チェーン（`constants.js` の表、または `wallet_addEthereumChain` で登録済み）なら切替えて `chainChanged` を emit し `null` を返す。未知なら 4902。`allowAnyChain: true` なら未知でも受け入れる |
 | `wallet_addEthereumChain` | チェーンを登録して `null` |
-| `wallet_requestPermissions` / `wallet_getPermissions` | `[{ parentCapability: "eth_accounts", caveats: [...] }]` |
+| `wallet_requestPermissions` / `wallet_getPermissions` | `[{ parentCapability: "eth_accounts", caveats: [...] }]`。`date` は接続ごとに一度だけ採番して固定する（`permissionsGrantedAt`）。呼ぶたびに変わらない |
 | `wallet_watchAsset` | `true` |
 | `wallet_revokePermissions` | 切断して `null` |
 
@@ -98,6 +111,8 @@ announce の `info` は `{ uuid, name, rdns, icon }`。既定は `name: "MetaMas
 - `privateKey` なし: `keccak256(method + JSON.stringify(params))` を r、その keccak を s として組み立てた決定的な偽 65 バイト（v = `1b`）を返す
 
 署名対象アドレスが接続アドレスと一致しない場合は 4100 エラー。
+
+`toBytes` は `0x` / `0X` どちらのプレフィックスも受け付ける。EIP-712 のエンコードは、値が欠けているフィールドがあれば `EIP-712: missing value for field of type <type>`、`bytesN` の長さが宣言と違えば `EIP-712: <type> expects <n> bytes, got <m>` という明示的なエラーを投げる（黙って切り詰め/ゼロ埋めしない）。
 
 ### トランザクション（ドライ運転）
 
@@ -114,6 +129,7 @@ announce の `info` は `{ uuid, name, rdns, icon }`。既定は `name: "MetaMas
 - `overrides[method]` が関数なら `(params, ctx) => result` として呼ぶ。それ以外の値はそのまま返す
 - パススルーは `rpcUrl` に JSON-RPC 2.0 で `fetch` する。`rpcUrl` 未設定なら `chainId` に対応する公開 RPC を `constants.js` の表から選ぶ。表に無ければ 4200 (unsupported method)
 - RPC がエラーを返した場合はそのエラーオブジェクトをそのまま reject する
+- HTTP レベルで失敗した場合（`res.ok` が false）は `RPC HTTP <status>` とだけ reject する。`rpcUrl`（API キーを含みうる）はメッセージに含めない
 
 ### 制御 API
 
@@ -176,6 +192,8 @@ window.__WALLET_SHIM_CONFIG__ = {"chain":"evm","address":"0x…","chainId":"0x1"
 - noble が未インストールなら「address 指定なら依存不要。鍵モードは `npm install` が必要」と案内して終了
 - 生成鍵はコマンドラインや stdout に出さない。カレントディレクトリの `.wallet-shim/key-<address>.txt` に保存し、stderr にパスだけ出す。`.wallet-shim/` は `.gitignore` に含める
 - 同じアドレスで再実行するときは `--private-key-file` で読ませる
+- 鍵モードの出力 JS（`dist/shim.js` に設定を差し込んだもの）には、シムがその場で署名するために秘密鍵そのものが必然的に埋め込まれる。stderr のログと `--print-config` の出力には秘密鍵を絶対に出さない（アドレスと鍵ファイルパスのみ）。鍵モードでは出力を `--out` でファイルに書き、標準出力やターミナルに流さないことを強く推奨する
+- `.wallet-shim/.gitignore` は実行のたびに内容を `*` で上書きする（手動編集されていても常に全無視の状態に戻す）
 
 ### 設定スキーマ
 
@@ -206,12 +224,26 @@ window.__WALLET_SHIM_CONFIG__ = {"chain":"evm","address":"0x…","chainId":"0x1"
   "name": "wallet-shim",
   "type": "module",
   "bin": { "wallet-shim": "bin/wallet-shim.mjs" },
-  "files": ["bin", "dist", "recipes", "SKILL.md"],
-  "engines": { "node": ">=20" }
+  "files": ["bin", "dist", "src", "recipes", "SKILL.md", "README.md"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:fixture": "node scripts/build-fixture.mjs",
+    "test": "vitest run",
+    "fixture": "node scripts/build-fixture.mjs && serve test/fixture -l 3000",
+    "e2e": "node test/e2e.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "...",
+    "viem": "...",
+    "serve": "...",
+    "esbuild": "...",
+    "vitest": "..."
+  }
 }
 ```
 
-公開は今回行わない。
+`files` に `src` を含めるので `npm pack` でもソースが配布される。`fixture` は `build-fixture.mjs` で viem をローカルバンドルしてから配信する（CDN からは読まない）。公開は今回行わない。
 
 ## 注入レシピと SKILL.md
 
@@ -269,16 +301,18 @@ window.__WALLET_SHIM_CONFIG__ = {"chain":"evm","address":"0x…","chainId":"0x1"
 
 ### フィクスチャ dApp
 
-`test/fixture/index.html`。viem を esm.sh から読み、EIP-6963 で検出したウォレット一覧を表示 → 接続 → `personal_sign` → `sendTransaction` → レシート待ちを順に行い、各結果を `<pre id="log">` に書き出す。`npx serve test/fixture` で立つ。
+`test/fixture/index.html`。viem は CDN（esm.sh 等）からは読まない。CDN 経由だと自動化ブラウザ上で ESM のモジュールグラフ解決が止まる事象が起きたため、`scripts/build-fixture.mjs`（esbuild、`test/fixture/viem-entry.js` を入口）でローカルに `test/fixture/vendor/viem.js` としてバンドルし、それを `<script type="module">` から読む。`npm run build:fixture` または `npm run fixture`（ビルド＋配信）で生成する。EIP-6963 で検出したウォレット一覧を表示 → 接続 → `personal_sign` → `sendTransaction` → レシート待ちを順に行い、各結果を `<pre id="log">` に書き出す。`npm run fixture`（内部で `npx serve test/fixture -l 3000`）で立つ。
 
-### E2E（手動、CI 外）
+### E2E
 
-`test/e2e.md` に手順を書く。フィクスチャを立て、`node bin/wallet-shim.mjs --generate-key --chain sepolia --out …` → `agent-browser open --init-script … http://localhost:3000` → snapshot でログを読む。実装後にこの手順で動作確認する。
+`test/e2e.mjs` で自動化した。puppeteer-core で、agent-browser が `npx agent-browser install` 時にダウンロードした Chrome（既定パス、`WALLET_SHIM_CHROME` で上書き可）を直接操作する。フィクスチャを起動し、生成した shim JS を load-before（`page.evaluateOnNewDocument`）と load-after（`page.evaluate`）の両方の経路で注入して、それぞれ connect → sign → send → receipt が完了することを確認する。`npm run e2e` で実行する。
+
+agent-browser 経由の手動手順は `test/e2e.md` に残しているが、このマシンでは `agent-browser open --init-script` 実行中にデーモンが固まり検証できなかった（未検証。参考手順として置いてある）。
 
 ### 完成の定義
 
 - `npm test` が通り、`npm run build` で `dist/shim.js` が再生成される
-- フィクスチャ dApp で agent-browser の init-script 経由で接続・署名・送信完了まで到達する
+- `npm run e2e` が load-before / load-after の両方で DONE に到達し、`calls` に eth_requestAccounts / eth_chainId / personal_sign / eth_sendTransaction / eth_getTransactionReceipt が含まれる（agent-browser 経由の手順は `recipes/` と `test/e2e.md` に文書化してあるが、このマシンでは未検証）
 - `recipes/` の5ファイルと SKILL.md が揃い、`~/.agents/skills/wallet-shim` から参照できる
 
 ## スコープ外
