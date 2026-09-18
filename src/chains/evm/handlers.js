@@ -202,6 +202,43 @@ export function createEvmHandlers({ state, config, emitter, passthrough, signer 
       config.estimateGas === 'passthrough' ? passthrough('eth_estimateGas', params) : config.estimateGas,
   });
 
+  // ---------- signing ----------
+
+  const isAddress = (v) => typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v);
+
+  function parseTyped(data) {
+    if (typeof data === 'string') {
+      try {
+        return JSON.parse(data);
+      } catch {
+        throw errors.invalidParams('Typed data must be valid JSON');
+      }
+    }
+    if (data && typeof data === 'object') return data;
+    throw errors.invalidParams('Typed data must be an object or JSON string');
+  }
+
+  function personal(message, address) {
+    if (typeof message !== 'string') throw errors.invalidParams('Expected [message, address]');
+    assertOwner(address);
+    return signer.signPersonal(message);
+  }
+
+  function typed(address, data) {
+    assertOwner(address);
+    return signer.signTypedData(parseTyped(data));
+  }
+
+  Object.assign(handlers, {
+    personal_sign: async (params) => personal(params?.[0], params?.[1]),
+    eth_sign: async (params) => personal(params?.[1], params?.[0]),
+    eth_signTypedData_v4: async (params) => typed(params?.[0], params?.[1]),
+    eth_signTypedData_v3: async (params) => typed(params?.[0], params?.[1]),
+    // v1 historically took [typedData, address]; accept either order.
+    eth_signTypedData: async (params) =>
+      isAddress(params?.[0]) ? typed(params[0], params[1]) : typed(params?.[1], params?.[0]),
+  });
+
   // Transactions (Task 8) and signing (Task 9) extend `handlers` below.
   return { handlers, setChainId, setAccounts, disconnect, connect, assertOwner, sameAddress };
 }
