@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mkdtempSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runCli } from '../../src/cli/index.js';
@@ -65,5 +65,13 @@ describe('cli (key modes)', () => {
     await runCli(['--generate-key', '--quiet'], a);
     await runCli(['--generate-key', '--quiet'], b);
     expect(cfgOf(a.out.join('')).address).not.toBe(cfgOf(b.out.join('')).address);
+  });
+  it('rewrites a stale .wallet-shim/.gitignore so generated keys stay ignored', async () => {
+    const i = io();
+    const dir = join(i.cwd, '.wallet-shim');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, '.gitignore'), 'nothing\n');
+    expect(await runCli(['--generate-key', '--quiet'], i)).toBe(0);
+    expect(readFileSync(join(dir, '.gitignore'), 'utf8').trim()).toBe('*');
   });
 });

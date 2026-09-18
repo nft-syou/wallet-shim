@@ -101,7 +101,7 @@ function saveGeneratedKey(io, address, privateKey) {
   const dir = resolve(io.cwd, '.wallet-shim');
   mkdirSync(dir, { recursive: true });
   const ignore = resolve(dir, '.gitignore');
-  if (!existsSync(ignore)) writeFileSync(ignore, '*\n', 'utf8');
+  writeFileSync(ignore, '*\n', 'utf8');
   const file = resolve(dir, `key-${address}.txt`);
   writeFileSync(file, privateKey + '\n', { encoding: 'utf8', mode: 0o600 });
   try {
