@@ -87,7 +87,89 @@ export function createSigner({ privateKey, address }) {
   };
 }
 
-// EIP-712 (hashTypedData / signTypedData) is appended in Task 6.
-export function signTypedData() {
-  throw new Error('signTypedData not implemented yet');
+// ---------- EIP-712 ----------
+
+const baseType = (t) => t.replace(/\[.*$/, '');
+
+function collectDeps(types, primary, found = new Set()) {
+  if (found.has(primary) || !types[primary]) return found;
+  found.add(primary);
+  for (const field of types[primary]) collectDeps(types, baseType(field.type), found);
+  return found;
+}
+
+export function encodeType(types, primary) {
+  const deps = [...collectDeps(types, primary)].filter((t) => t !== primary).sort();
+  return [primary, ...deps]
+    .map((t) => `${t}(${types[t].map((f) => `${f.type} ${f.name}`).join(',')})`)
+    .join('');
+}
+
+export function typeHash(types, primary) {
+  return keccak(utf8ToBytes(encodeType(types, primary)));
+}
+
+function padLeft(bytes) {
+  if (bytes.length > 32) throw new Error('EIP-712: value longer than 32 bytes');
+  const out = new Uint8Array(32);
+  out.set(bytes, 32 - bytes.length);
+  return out;
+}
+
+function padRight(bytes) {
+  if (bytes.length > 32) throw new Error('EIP-712: value longer than 32 bytes');
+  const out = new Uint8Array(32);
+  out.set(bytes, 0);
+  return out;
+}
+
+function encodeValue(types, type, value) {
+  if (types[type]) return hashStruct(types, type, value ?? {});
+  const arr = type.match(/^(.*)\[(\d*)\]$/);
+  if (arr) {
+    const items = (value ?? []).map((v) => encodeValue(types, arr[1], v));
+    return keccak(concatBytes(...items));
+  }
+  if (type === 'string') return keccak(utf8ToBytes(String(value ?? '')));
+  if (type === 'bytes') return keccak(toBytes(value ?? '0x'));
+  if (type === 'bool') return padLeft(new Uint8Array([value ? 1 : 0]));
+  if (type === 'address') return padLeft(hexToBytes(strip0x(String(value)).padStart(40, '0')));
+  if (/^bytes\d+$/.test(type)) return padRight(toBytes(value));
+  if (/^u?int\d*$/.test(type)) {
+    let n = BigInt(value);
+    if (n < 0n) n = (1n << 256n) + n;
+    return padLeft(hexToBytes(n.toString(16).padStart(64, '0')));
+  }
+  throw new Error(`EIP-712: unsupported type ${type}`);
+}
+
+export function hashStruct(types, primary, data) {
+  const parts = [typeHash(types, primary)];
+  for (const field of types[primary]) parts.push(encodeValue(types, field.type, data[field.name]));
+  return keccak(concatBytes(...parts));
+}
+
+const DOMAIN_FIELDS = [
+  ['name', 'string'],
+  ['version', 'string'],
+  ['chainId', 'uint256'],
+  ['verifyingContract', 'address'],
+  ['salt', 'bytes32'],
+];
+
+function inferDomainType(domain = {}) {
+  return DOMAIN_FIELDS.filter(([name]) => domain[name] !== undefined).map(([name, type]) => ({ name, type }));
+}
+
+export function hashTypedData(typed) {
+  const { primaryType, domain = {}, message = {} } = typed;
+  const types = { ...typed.types };
+  if (!types.EIP712Domain) types.EIP712Domain = inferDomainType(domain);
+  const parts = [new Uint8Array([0x19, 0x01]), hashStruct(types, 'EIP712Domain', domain)];
+  if (primaryType !== 'EIP712Domain') parts.push(hashStruct(types, primaryType, message));
+  return keccak(concatBytes(...parts));
+}
+
+export function signTypedData(privateKeyHex, typed) {
+  return signHash(privateKeyHex, hashTypedData(typed));
 }
