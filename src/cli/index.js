@@ -1,5 +1,6 @@
 import { parseArgs } from 'node:util';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULTS, resolveConfig, publicConfig } from '../core/config.js';
@@ -78,10 +79,59 @@ function readDist() {
   return readFileSync(DIST_PATH, 'utf8');
 }
 
+async function loadSigning() {
+  try {
+    return await import('../signing/evm.js');
+  } catch (e) {
+    if (e?.code === 'ERR_MODULE_NOT_FOUND') {
+      throw new Error('Key modes need @noble/curves and @noble/hashes. Run "npm install" in the wallet-shim directory, or use --address instead.');
+    }
+    throw e;
+  }
+}
+
+function normalizeKey(raw) {
+  const s = String(raw).trim();
+  const hex = s.startsWith('0x') || s.startsWith('0X') ? s.slice(2) : s;
+  if (!/^[0-9a-fA-F]{64}$/.test(hex)) throw new Error('Invalid private key: expected 64 hex chars (with or without 0x)');
+  return '0x' + hex.toLowerCase();
+}
+
+function saveGeneratedKey(io, address, privateKey) {
+  const dir = resolve(io.cwd, '.wallet-shim');
+  mkdirSync(dir, { recursive: true });
+  const ignore = resolve(dir, '.gitignore');
+  if (!existsSync(ignore)) writeFileSync(ignore, '*\n', 'utf8');
+  const file = resolve(dir, `key-${address}.txt`);
+  writeFileSync(file, privateKey + '\n', { encoding: 'utf8', mode: 0o600 });
+  try {
+    chmodSync(file, 0o600);
+  } catch {
+    // Windows ignores POSIX modes; the directory is gitignored regardless.
+  }
+  return file;
+}
+
 export async function resolveIdentity(values, io) {
-  // Extended in Task 12 with private-key / generate-key handling.
-  if (values.address) return { address: values.address, privateKey: null, mode: 'address' };
-  throw new Error('No identity given: pass --address, --private-key, --private-key-file, or --generate-key');
+  let privateKey = null;
+  let mode;
+  if (values['private-key']) {
+    privateKey = normalizeKey(values['private-key']);
+    mode = 'private-key';
+  } else if (values['private-key-file']) {
+    privateKey = normalizeKey(readFileSync(resolve(io.cwd, values['private-key-file']), 'utf8'));
+    mode = 'private-key';
+  } else if (values.address && !values['generate-key']) {
+    return { address: values.address, privateKey: null, mode: 'address' };
+  } else {
+    privateKey = '0x' + randomBytes(32).toString('hex');
+    mode = 'generated-key';
+  }
+  const { deriveAddress } = await loadSigning();
+  const address = deriveAddress(privateKey);
+  const identity = { address, privateKey, mode };
+  if (mode === 'generated-key') identity.keyFile = saveGeneratedKey(io, address, privateKey);
+  return identity;
 }
 
 export async function runCli(argv, io) {
