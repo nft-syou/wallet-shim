@@ -40,7 +40,7 @@ npx agent-browser --session wallet-shim eval "JSON.stringify(window.__WALLET_SHI
 
 ## 注意
 
-マシン上で agent-browser 0.37.1 のデーモンが `open --init-script` 中にハングすることが報告されています。`open` コマンドが 1 分以内に返らない場合は、デーモンを停止して `recipes/puppeteer.md` にフォールバックしてください。また `close --all` はマシン上の全セッションを閉じるため使用しないでください。
+このプロジェクトを作成したマシンでは agent-browser 0.37.1 のデーモンが `open --init-script` で応答しなくなりました。`open` コマンドが 1 分以内に返らない場合は、デーモンを停止し、`test/e2e.mjs` に実装された working puppeteer-core の例を使用してください（`recipes/puppeteer.md` 参照）。また `close --all` はマシン上の全セッションを閉じるため使用しないでください。
 
 ## ロード後注入で dApp がウォレットを拾わないとき
 

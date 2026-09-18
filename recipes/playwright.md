@@ -30,7 +30,7 @@ const calls = await page.evaluate(() => window.__WALLET_SHIM__.calls.map((c) => 
 expect(calls).toContain('eth_requestAccounts');
 ```
 
-`test/e2e.mjs` に Puppeteer での 2 段階パターン（`addInitScript` / `page.evaluate`）の完全な実装例があります。同じパターンが Playwright にも適用されます。
+`test/e2e.mjs` は Puppeteer 実装ですが、同じ 2 段階パターン（Puppeteer の `evaluateOnNewDocument` が Playwright の `addInitScript` に、`page.evaluate` はそのまま対応）の完全な実装例として参照できます。
 
 ## ロード後注入で dApp がウォレットを拾わないとき
 
