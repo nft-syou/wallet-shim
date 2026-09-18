@@ -6,7 +6,7 @@
 
 ```bash
 node bin/wallet-shim.mjs --generate-key --chain sepolia --out ./shim.out.js
-npx agent-browser --session wallet-shim open --init-script ./shim.out.js https://app.example.com
+npx agent-browser --session wallet-shim open --headed false --init-script ./shim.out.js https://app.example.com
 ```
 
 init script は以後そのセッションで開く全タブに適用される。
@@ -14,13 +14,15 @@ init script は以後そのセッションで開く全タブに適用される�
 ## 2. `addinitscript`（セッション起動後、次のナビゲーションから）
 
 ```bash
-npx agent-browser --session wallet-shim open                                    # URL 無しでクリーン起動
+npx agent-browser --session wallet-shim open --headed false                                    # URL 無しでクリーン起動
 npx agent-browser --session wallet-shim addinitscript "$(cat ./shim.out.js)"    # 識別子が返る
-npx agent-browser --session wallet-shim open https://app.example.com
+npx agent-browser --session wallet-shim open --headed false https://app.example.com
 npx agent-browser --session wallet-shim removeinitscript <identifier>           # 外すとき
 ```
 
 PowerShell: `npx agent-browser --session wallet-shim addinitscript (Get-Content ./shim.out.js -Raw)`
+
+`--headless` というフラグは 0.37.x には無い。ヘッドレスは `--headed false`。
 
 シムは 100KB 超なのでコマンドライン長の上限（cmd.exe は約 8K）に当たることがある。その場合は経路 1 の `--init-script <path>` を使う。
 

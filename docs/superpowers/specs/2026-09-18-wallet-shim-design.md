@@ -94,7 +94,7 @@ announce の `info` は `{ uuid, name, rdns, icon }`。既定は `name: "MetaMas
 | メソッド | 応答 |
 |---|---|
 | `eth_requestAccounts` | `[address]`。初回に `connect` イベント（`{ chainId }`）を emit し接続済みにする |
-| `eth_accounts` | 接続済みなら `[address]`。`autoConnect: true`（既定）なら未接続でも `[address]`、false なら `[]` |
+| `eth_accounts` | 接続済みなら `[address]`。`autoConnect: true`（既定）なら未接続でも `[address]`、false なら `[]`。`disconnect()` / `wallet_revokePermissions` の後は `autoConnect` に関わらず `[]`（`eth_requestAccounts` で復帰） |
 | `eth_chainId` | 設定の `chainId`（16進） |
 | `net_version` | `chainId` の10進文字列 |
 | `wallet_switchEthereumChain` | 既知チェーン（`constants.js` の表、または `wallet_addEthereumChain` で登録済み）なら切替えて `chainChanged` を emit し `null` を返す。未知なら 4902。`allowAnyChain: true` なら未知でも受け入れる |
@@ -142,7 +142,7 @@ announce の `info` は `{ uuid, name, rdns, icon }`。既定は `name: "MetaMas
 | `rejectNext(method?, code = 4001)` | 次のリクエスト（method 指定時はそのメソッドの次）をユーザー拒否エラーにする |
 | `setAccounts(addresses)` | 接続アドレスを切替えて `accountsChanged` を emit |
 | `setChainId(hex)` | チェーンを切替えて `chainChanged` を emit |
-| `disconnect()` | 切断して `disconnect` イベントを emit |
+| `disconnect()` | 切断して `disconnect` イベントを emit。以後 `eth_accounts` は `[]`、`isConnected()` は false |
 | `override(method, fn \| value)` | 実行時に overrides を追加する（関数型はここでしか登録できない） |
 | `config` | 適用済みの設定（秘密鍵は含めない） |
 | `version` | シムのバージョン |
