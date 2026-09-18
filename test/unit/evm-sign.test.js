@@ -19,7 +19,9 @@ describe('fake signing mode (address only)', () => {
     const sig = await evm.call('personal_sign', ['0x68656c6c6f', ADDR]);
     expect(sig).toBe(fakeSignature('personal_sign:0x68656c6c6f'));
     expect(await evm.call('personal_sign', ['0x68656c6c6f', ADDR.toLowerCase()])).toBe(sig);
-    await expect(verifyMessage({ address: ADDR, message: 'hello', signature: sig })).resolves.toBe(false);
+    // A fake signature must never verify: viem either returns false or throws on a malformed point.
+    const verified = await verifyMessage({ address: ADDR, message: 'hello', signature: sig }).catch(() => false);
+    expect(verified).toBe(false);
   });
   it('rejects signing for other addresses with 4100', async () => {
     const evm = makeEvm();
