@@ -85,4 +85,10 @@ describe('EIP-712', () => {
     expect(bytesToHex(hashStruct(types, 'T', { ...data, ok: false }))).not.toBe(bytesToHex(h));
     // A string message passed as JSON must be accepted by hashTypedData's caller (handlers), tested there.
   });
+  it('rejects missing fields and wrong bytesN length', () => {
+    const types = { T: [{ name: 'a', type: 'string' }, { name: 'b', type: 'bytes4' }] };
+    expect(() => hashStruct(types, 'T', { b: '0xdeadbeef' })).toThrow(/missing value/);
+    expect(() => hashStruct(types, 'T', { a: 'x', b: '0xdead' })).toThrow(/bytes4 expects 4 bytes/);
+    expect(() => hashStruct(types, 'T', { a: 'x', b: '0xdeadbeef' })).not.toThrow();
+  });
 });

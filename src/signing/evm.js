@@ -124,17 +124,28 @@ function padRight(bytes) {
 }
 
 function encodeValue(types, type, value) {
-  if (types[type]) return hashStruct(types, type, value ?? {});
+  if (value === undefined || value === null) {
+    throw new Error(`EIP-712: missing value for field of type ${type}`);
+  }
+  if (types[type]) return hashStruct(types, type, value);
   const arr = type.match(/^(.*)\[(\d*)\]$/);
   if (arr) {
-    const items = (value ?? []).map((v) => encodeValue(types, arr[1], v));
+    const items = value.map((v) => encodeValue(types, arr[1], v));
     return keccak(concatBytes(...items));
   }
-  if (type === 'string') return keccak(utf8ToBytes(String(value ?? '')));
-  if (type === 'bytes') return keccak(toBytes(value ?? '0x'));
+  if (type === 'string') return keccak(utf8ToBytes(String(value)));
+  if (type === 'bytes') return keccak(toBytes(value));
   if (type === 'bool') return padLeft(new Uint8Array([value ? 1 : 0]));
   if (type === 'address') return padLeft(hexToBytes(strip0x(String(value)).padStart(40, '0')));
-  if (/^bytes\d+$/.test(type)) return padRight(toBytes(value));
+  const fixedBytes = type.match(/^bytes(\d+)$/);
+  if (fixedBytes) {
+    const n = Number(fixedBytes[1]);
+    const bytes = toBytes(value);
+    if (bytes.length !== n) {
+      throw new Error(`EIP-712: ${type} expects ${n} bytes, got ${bytes.length}`);
+    }
+    return padRight(bytes);
+  }
   if (/^u?int\d*$/.test(type)) {
     let n = BigInt(value);
     if (n < 0n) n = (1n << 256n) + n;
