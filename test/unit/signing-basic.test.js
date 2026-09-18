@@ -18,6 +18,7 @@ describe('hashing helpers', () => {
     expect(bytesToHex(toBytes('0x6869'))).toBe('6869');
     expect(bytesToHex(toBytes('hi'))).toBe('6869');
     expect(bytesToHex(toBytes('0xabc'))).toBe('0abc');
+    expect(bytesToHex(toBytes('0XDEAD'))).toBe('dead');
   });
   it('checksums addresses (EIP-55)', () => {
     expect(toChecksumAddress('0x7e5f4552091a69125d5dfcb7b8c2659029395bdf')).toBe(ADDR_ONE);

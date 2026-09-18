@@ -11,7 +11,7 @@ export function strip0x(s) {
   return s.startsWith('0x') || s.startsWith('0X') ? s.slice(2) : s;
 }
 
-const HEX_RE = /^0x[0-9a-fA-F]*$/;
+const HEX_RE = /^0[xX][0-9a-fA-F]*$/;
 
 export function toBytes(value) {
   if (value instanceof Uint8Array) return value;
