@@ -15,6 +15,7 @@ export function createEvmHandlers({ state, config, emitter, passthrough, signer 
   function disconnect() {
     if (!state.connected) return;
     state.connected = false;
+    state.permissionsGrantedAt = null;
     emitter.emit('accountsChanged', []);
     emitter.emit('disconnect', errors.disconnected());
   }
@@ -42,7 +43,7 @@ export function createEvmHandlers({ state, config, emitter, passthrough, signer 
         parentCapability: 'eth_accounts',
         invoker: 'wallet-shim',
         caveats: [{ type: 'restrictReturnedAccounts', value: [...state.accounts] }],
-        date: Date.now(),
+        date: (state.permissionsGrantedAt ??= Date.now()),
       },
     ];
   }

@@ -45,6 +45,7 @@ describe('accounts and connection', () => {
     expect(perms[0].parentCapability).toBe('eth_accounts');
     expect(perms[0].caveats[0].value).toEqual([ADDR]);
     expect(await evm.call('wallet_getPermissions')).toEqual(perms);
+    expect(perms[0].date).toBe((await evm.call('wallet_getPermissions'))[0].date);
     expect(await evm.call('wallet_watchAsset', [{ type: 'ERC20' }])).toBe(true);
   });
 });
