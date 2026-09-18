@@ -2,3 +2,4 @@ node_modules/
 .wallet-shim/
 *.out.js
 .superpowers/
+test/fixture/vendor/

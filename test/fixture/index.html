@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>wallet-shim fixture</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 720px; }
+    pre { background: #f4f4f4; padding: 1rem; white-space: pre-wrap; word-break: break-all; }
+    button { margin: 0.25rem 0; }
+  </style>
+</head>
+<body>
+  <h1>wallet-shim fixture</h1>
+  <p>Status: <strong id="status">IDLE</strong></p>
+  <h2>EIP-6963 wallets</h2>
+  <ul id="wallets"></ul>
+  <button id="connect-legacy">Connect via window.ethereum</button>
+  <button id="rediscover">Re-dispatch eip6963:requestProvider</button>
+  <pre id="log"></pre>
+
+  <script type="module">
+    import { createWalletClient, createPublicClient, custom, parseEther } from './vendor/viem.js';
+
+    const $ = (id) => document.getElementById(id);
+    const log = (m) => { $('log').textContent += m + '\n'; };
+    const providers = new Map();
+
+    window.addEventListener('eip6963:announceProvider', (e) => {
+      const { info, provider } = e.detail;
+      if (providers.has(info.uuid)) return;
+      providers.set(info.uuid, { info, provider });
+      log(`detected: ${info.name} (${info.rdns})`);
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.textContent = `Connect ${info.name}`;
+      btn.onclick = () => run(provider);
+      li.appendChild(btn);
+      $('wallets').appendChild(li);
+    });
+    window.dispatchEvent(new Event('eip6963:requestProvider'));
+
+    $('connect-legacy').onclick = () => (window.ethereum ? run(window.ethereum) : log('no window.ethereum'));
+    $('rediscover').onclick = () => window.dispatchEvent(new Event('eip6963:requestProvider'));
+
+    async function run(provider) {
+      $('status').textContent = 'RUNNING';
+      try {
+        const wallet = createWalletClient({ transport: custom(provider) });
+        const pub = createPublicClient({ transport: custom(provider) });
+        const [account] = await wallet.requestAddresses();
+        log(`connected: ${account}`);
+        log(`chainId: ${await wallet.getChainId()}`);
+        const sig = await wallet.signMessage({ account, message: 'hello from fixture' });
+        log(`signature: ${sig}`);
+        const hash = await wallet.sendTransaction({ account, to: account, value: parseEther('0.001'), chain: null });
+        log(`tx sent: ${hash}`);
+        const receipt = await pub.waitForTransactionReceipt({ hash });
+        log(`receipt: status=${receipt.status} block=${receipt.blockNumber}`);
+        $('status').textContent = 'DONE';
+      } catch (e) {
+        log(`ERROR: ${e.shortMessage ?? e.message}`);
+        $('status').textContent = 'ERROR';
+      }
+    }
+  </script>
+</body>
+</html>
