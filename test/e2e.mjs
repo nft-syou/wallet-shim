@@ -164,7 +164,7 @@ try {
   printSummary('Section B (load-after)', resultB);
 
   const okA = resultA.status === 'DONE' && checkMethods(resultA.methods);
-  const okB = resultB.status === 'DONE' && checkMethods(resultB.methods);
+  const okB = resultB.status === 'DONE' && checkMethods(resultB.methods) && !resultB.alreadyDetectedBeforeInject;
 
   if (!okA || !okB) {
     console.error('\n[e2e] FAILED: one or both sections did not reach DONE with the expected methods.');

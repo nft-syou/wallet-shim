@@ -103,4 +103,12 @@ describe('control helpers', () => {
     expect(await evm.call('wallet_revokePermissions', [{ eth_accounts: {} }])).toBeNull();
     expect(evm.state.connected).toBe(false);
   });
+  it('disconnect() makes eth_accounts return [] regardless of autoConnect, until reconnected', async () => {
+    const evm = makeEvm(); // autoConnect: true (default)
+    expect(await evm.call('eth_accounts')).toEqual([ADDR]);
+    evm.disconnect();
+    expect(await evm.call('eth_accounts')).toEqual([]);
+    await evm.call('eth_requestAccounts');
+    expect(await evm.call('eth_accounts')).toEqual([ADDR]);
+  });
 });

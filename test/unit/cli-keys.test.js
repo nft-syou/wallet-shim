@@ -74,4 +74,26 @@ describe('cli (key modes)', () => {
     expect(await runCli(['--generate-key', '--quiet'], i)).toBe(0);
     expect(readFileSync(join(dir, '.gitignore'), 'utf8').trim()).toBe('*');
   });
+  it('warns on stderr when a key mode has no --out, even with --quiet', async () => {
+    const i = io();
+    expect(await runCli(['--generate-key', '--quiet'], i)).toBe(0);
+    expect(i.err.join('')).toContain('warning: key mode without --out');
+  });
+  it('does not warn when a key mode has --out', async () => {
+    const i = io();
+    const out = join(i.cwd, 'shim.out.js');
+    expect(await runCli(['--generate-key', '--out', out, '--quiet'], i)).toBe(0);
+    expect(i.err.join('')).not.toContain('warning: key mode without --out');
+  });
+  it('does not warn for --address mode (no private key involved)', async () => {
+    const i = io();
+    expect(await runCli(['--address', ADDR_ONE, '--quiet'], i)).toBe(0);
+    expect(i.err.join('')).not.toContain('warning: key mode without --out');
+  });
+  it('rejects an unknown --format before generating a key file', async () => {
+    const i = io();
+    expect(await runCli(['--generate-key', '--format', 'xml', '--quiet'], i)).toBe(1);
+    expect(i.err.join('')).toMatch(/Unknown --format "xml" \(expected iife or base64\)/);
+    expect(existsSync(join(i.cwd, '.wallet-shim'))).toBe(false);
+  });
 });

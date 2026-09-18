@@ -18,6 +18,7 @@ export function createEvmProvider({ config, env }) {
     accounts: [signer.address],
     chainId: config.chainId,
     connected: false,
+    revoked: false,
     txs: [],
     chains: JSON.parse(JSON.stringify(CHAINS)),
     nonce: 0,
@@ -28,8 +29,10 @@ export function createEvmProvider({ config, env }) {
   const request = (args) => router.request(args);
 
   function sendAsync(payload, callback) {
-    request({ method: payload?.method, params: payload?.params }).then(
-      (result) => callback(null, { id: payload?.id, jsonrpc: '2.0', result }),
+    const result = request({ method: payload?.method, params: payload?.params });
+    if (typeof callback !== 'function') return result;
+    result.then(
+      (r) => callback(null, { id: payload?.id, jsonrpc: '2.0', result: r }),
       (err) => callback(err, { id: payload?.id, jsonrpc: '2.0', error: { code: err.code, message: err.message, data: err.data } }),
     );
   }
@@ -45,7 +48,7 @@ export function createEvmProvider({ config, env }) {
   const provider = {
     isMetaMask: true,
     _metamask: { isUnlocked: async () => true },
-    isConnected: () => true,
+    isConnected: () => !state.revoked,
     request,
     send,
     sendAsync,
@@ -57,7 +60,7 @@ export function createEvmProvider({ config, env }) {
     removeListener: (...a) => (emitter.removeListener(...a), provider),
     removeAllListeners: () => provider,
     listenerCount: (e) => emitter.listenerCount(e),
-    get selectedAddress() { return state.accounts[0] ?? null; },
+    get selectedAddress() { return state.revoked ? null : state.accounts[0] ?? null; },
     get chainId() { return state.chainId; },
     get networkVersion() { return BigInt(state.chainId).toString(10); },
   };

@@ -7,12 +7,14 @@ const sameAddress = (a, b) =>
 
 export function createEvmHandlers({ state, config, emitter, passthrough, signer }) {
   function connect() {
+    state.revoked = false;
     if (state.connected) return;
     state.connected = true;
     emitter.emit('connect', { chainId: state.chainId });
   }
 
   function disconnect() {
+    state.revoked = true;
     if (!state.connected) return;
     state.connected = false;
     state.permissionsGrantedAt = null;
@@ -63,7 +65,7 @@ export function createEvmHandlers({ state, config, emitter, passthrough, signer 
       connect();
       return [...state.accounts];
     },
-    eth_accounts: async () => (state.connected || config.autoConnect ? [...state.accounts] : []),
+    eth_accounts: async () => (state.revoked ? [] : state.connected || config.autoConnect ? [...state.accounts] : []),
     eth_chainId: async () => state.chainId,
     net_version: async () => BigInt(state.chainId).toString(10),
     eth_coinbase: async () => state.accounts[0] ?? null,

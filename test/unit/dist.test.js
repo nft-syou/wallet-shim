@@ -18,6 +18,7 @@ describe('dist/shim.js', () => {
     expect(win.__WALLET_SHIM__.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(await win.ethereum.request({ method: 'eth_chainId' })).toBe('0xaa36a7');
     expect(await win.ethereum.request({ method: 'eth_requestAccounts' })).toEqual([ADDR]);
+    expect(win.__WALLET_SHIM_CONFIG__).toBeUndefined();
   });
   it('is idempotent and does not throw without config', () => {
     const code = readFileSync('dist/shim.js', 'utf8');

@@ -3243,11 +3243,13 @@ ${body.length}`);
   var sameAddress = (a, b) => typeof a === "string" && typeof b === "string" && a.toLowerCase() === b.toLowerCase();
   function createEvmHandlers({ state, config, emitter, passthrough, signer }) {
     function connect() {
+      state.revoked = false;
       if (state.connected) return;
       state.connected = true;
       emitter.emit("connect", { chainId: state.chainId });
     }
     function disconnect() {
+      state.revoked = true;
       if (!state.connected) return;
       state.connected = false;
       state.permissionsGrantedAt = null;
@@ -3292,7 +3294,7 @@ ${body.length}`);
         connect();
         return [...state.accounts];
       },
-      eth_accounts: async () => state.connected || config.autoConnect ? [...state.accounts] : [],
+      eth_accounts: async () => state.revoked ? [] : state.connected || config.autoConnect ? [...state.accounts] : [],
       eth_chainId: async () => state.chainId,
       net_version: async () => BigInt(state.chainId).toString(10),
       eth_coinbase: async () => state.accounts[0] ?? null,
@@ -3460,6 +3462,7 @@ ${body.length}`);
       accounts: [signer.address],
       chainId: config.chainId,
       connected: false,
+      revoked: false,
       txs: [],
       chains: JSON.parse(JSON.stringify(CHAINS)),
       nonce: 0
@@ -3468,8 +3471,10 @@ ${body.length}`);
     const router = createRouter({ handlers: evm.handlers, overrides: { ...config.overrides }, passthrough, recorder });
     const request = (args) => router.request(args);
     function sendAsync(payload, callback) {
-      request({ method: payload?.method, params: payload?.params }).then(
-        (result) => callback(null, { id: payload?.id, jsonrpc: "2.0", result }),
+      const result = request({ method: payload?.method, params: payload?.params });
+      if (typeof callback !== "function") return result;
+      result.then(
+        (r) => callback(null, { id: payload?.id, jsonrpc: "2.0", result: r }),
         (err) => callback(err, { id: payload?.id, jsonrpc: "2.0", error: { code: err.code, message: err.message, data: err.data } })
       );
     }
@@ -3483,7 +3488,7 @@ ${body.length}`);
     const provider = {
       isMetaMask: true,
       _metamask: { isUnlocked: async () => true },
-      isConnected: () => true,
+      isConnected: () => !state.revoked,
       request,
       send,
       sendAsync,
@@ -3496,7 +3501,7 @@ ${body.length}`);
       removeAllListeners: () => provider,
       listenerCount: (e) => emitter.listenerCount(e),
       get selectedAddress() {
-        return state.accounts[0] ?? null;
+        return state.revoked ? null : state.accounts[0] ?? null;
       },
       get chainId() {
         return state.chainId;
@@ -3578,6 +3583,11 @@ ${body.length}`);
     }
     try {
       createShim(config, { window, fetch: (...args) => window.fetch(...args), console });
+      try {
+        delete window.__WALLET_SHIM_CONFIG__;
+      } catch {
+        window.__WALLET_SHIM_CONFIG__ = void 0;
+      }
     } catch (e) {
       console.error("[wallet-shim] failed to install:", e);
     }

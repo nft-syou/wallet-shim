@@ -16,7 +16,7 @@ export function makeEvm(rawConfig = {}) {
     return `pt:${method}`;
   });
   const state = {
-    accounts: [signer.address], chainId: config.chainId, connected: false, txs: [],
+    accounts: [signer.address], chainId: config.chainId, connected: false, revoked: false, txs: [],
     chains: structuredClone(CHAINS), nonce: 0,
   };
   const api = createEvmHandlers({ state, config, emitter, passthrough, signer });

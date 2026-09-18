@@ -51,6 +51,11 @@ describe('createShim', () => {
     expect(bad[0].code).toBe(4100);
     expect(bad[1].error.code).toBe(4100);
   });
+  it('sendAsync without a callback returns the request promise', async () => {
+    const env = makeEnv();
+    const { provider } = createShim({ address: ADDR }, env);
+    expect(await provider.sendAsync({ method: 'eth_chainId', params: [] })).toBe('0x1');
+  });
   it('control API drives events and records calls', async () => {
     const env = makeEnv();
     const control = createShim({ address: ADDR, verbose: false }, env);
@@ -67,6 +72,12 @@ describe('createShim', () => {
     expect(control.config.privateKey).toBeUndefined();
     expect(control.version).toBe('dev');
     expect(control.txs).toEqual([]);
+    control.disconnect();
+    expect(control.provider.isConnected()).toBe(false);
+    expect(control.provider.selectedAddress).toBeNull();
+    await control.provider.request({ method: 'eth_requestAccounts' });
+    expect(control.provider.isConnected()).toBe(true);
+    expect(control.provider.selectedAddress).toBe(ADDR);
   });
   it('honours replaceExisting=false and custom name/rdns/rpcUrl', () => {
     const env = makeEnv();

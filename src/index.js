@@ -13,6 +13,13 @@ import { createShim } from './shim.js';
   }
   try {
     createShim(config, { window, fetch: (...args) => window.fetch(...args), console });
+    // Remove the private-key-bearing config from window once installed so it
+    // does not stay readable by page scripts after the shim has bootstrapped.
+    try {
+      delete window.__WALLET_SHIM_CONFIG__;
+    } catch {
+      window.__WALLET_SHIM_CONFIG__ = undefined;
+    }
   } catch (e) {
     console.error('[wallet-shim] failed to install:', e);
   }

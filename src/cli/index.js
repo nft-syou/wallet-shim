@@ -152,6 +152,13 @@ export async function runCli(argv, io) {
     return 0;
   }
 
+  // Validate --format before any identity resolution so a bad format fails
+  // fast without generating (and leaving behind) a key file.
+  if (values.format !== 'iife' && values.format !== 'base64') {
+    io.stderr(`error: Unknown --format "${values.format}" (expected iife or base64)\n`);
+    return 1;
+  }
+
   try {
     const fileCfg = values.config ? JSON.parse(readFileSync(resolve(io.cwd, values.config), 'utf8')) : {};
     const merged = { ...DEFAULTS, ...fileCfg };
@@ -173,6 +180,12 @@ export async function runCli(argv, io) {
 
     const config = resolveConfig(merged);
     const output = buildOutput(config, readDist(), values.format);
+
+    if (identity.privateKey && !values.out) {
+      // Always warn on stderr (even with --quiet): stdout carries the private
+      // key in this case, and a silent pipe could leak it unnoticed.
+      io.stderr('[wallet-shim] warning: key mode without --out; the emitted JS contains the private key, prefer --out <file>\n');
+    }
 
     if (values.out) {
       writeFileSync(resolve(io.cwd, values.out), output, 'utf8');
