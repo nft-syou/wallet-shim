@@ -9,7 +9,7 @@ export function createPassthrough({ fetch: doFetch, rpcUrl }) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', id: ++nextId, method, params }),
     });
-    if (!res.ok) throw errors.internal(`RPC HTTP ${res.status} from ${rpcUrl}`);
+    if (!res.ok) throw errors.internal(`RPC HTTP ${res.status}`);
     const body = await res.json();
     if (body.error) throw errors.fromRpc(body.error);
     return body.result;

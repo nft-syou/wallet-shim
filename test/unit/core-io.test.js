@@ -64,5 +64,11 @@ describe('passthrough', () => {
     await expect(none('eth_call', [])).rejects.toMatchObject({ code: 4200 });
     const bad = createPassthrough({ fetch: vi.fn(async () => ({ ok: false, status: 502 })), rpcUrl: 'http://x' });
     await expect(bad('eth_call', [])).rejects.toMatchObject({ code: -32603 });
+    // Verify rpcUrl is not leaked in error message
+    try {
+      await bad('eth_call', []);
+    } catch (err) {
+      expect(err.message).not.toContain('http://x');
+    }
   });
 });
