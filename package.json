@@ -1,0 +1,26 @@
+{
+  "name": "wallet-shim",
+  "version": "0.1.0",
+  "description": "Fake EIP-1193 (MetaMask-compatible) provider for dApp browser automation. Injects a connected wallet, dry-runs transactions.",
+  "type": "module",
+  "license": "MIT",
+  "bin": { "wallet-shim": "bin/wallet-shim.mjs" },
+  "files": ["bin", "dist", "src", "recipes", "SKILL.md", "README.md"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fixture": "serve test/fixture -l 3000"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "serve": "^14.2.6",
+    "viem": "^2.56.8",
+    "vitest": "^5.0.1"
+  }
+}
