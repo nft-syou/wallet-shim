@@ -60,6 +60,7 @@ wallet-shim/
 │   ├── playwright.md         # addInitScript
 │   ├── puppeteer.md          # evaluateOnNewDocument
 │   ├── claude-in-chrome.md   # javascript_tool（ロード後注入の制約つき）
+│   ├── orca-cli.md           # Orca 内蔵ブラウザ。orca eval + <script src>（ロード後注入、実証済み）
 │   └── devtools.md           # 手貼り
 ├── test/
 │   ├── unit/                  # vitest。provider.request() を Node 上で直接叩く
@@ -308,6 +309,8 @@ window.__WALLET_SHIM_CONFIG__ = {"chain":"evm","address":"0x…","chainId":"0x1"
 `test/e2e.mjs` で自動化した。puppeteer-core で、agent-browser が `npx agent-browser install` 時にダウンロードした Chrome（既定パス、`WALLET_SHIM_CHROME` で上書き可）を直接操作する。フィクスチャを起動し、生成した shim JS を load-before（`page.evaluateOnNewDocument`）と load-after（`page.evaluate`）の両方の経路で注入して、それぞれ connect → sign → send → receipt が完了することを確認する。`npm run e2e` で実行する。
 
 agent-browser 経由の手動手順は `test/e2e.md` に残しているが、このマシンでは `agent-browser open --init-script` 実行中にデーモンが固まり検証できなかった（未検証。参考手順として置いてある）。
+
+Orca 内蔵ブラウザ（`orca tab create` / `orca eval`）経由のロード後注入は 2026-09-19 に手動で実証した。130KB のシムは引数長の上限に当たるため、フィクスチャサーバーから配信して `<script src>` で読み込む。`orca snapshot` / `click` / `wait` は内部ヘルパーが stale だと失敗するので、クリックは `eval` の JS で行う（`recipes/orca-cli.md`）。
 
 ### 完成の定義
 

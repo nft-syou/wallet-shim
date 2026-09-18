@@ -25,5 +25,6 @@ npm run e2e                        # drives the fixture with puppeteer-core, ass
 
 - Unit tests: `npm test` (vitest) covers the router, signing, chains, CLI and dist bundle.
 - E2E: `npm run e2e` drives the bundled fixture dApp with puppeteer-core against the Chrome that `agent-browser install` downloads, exercising both load-before (`evaluateOnNewDocument`) and load-after (`page.evaluate`) injection.
+- Orca built-in browser: load-after injection via `orca eval` + `<script src>` verified manually against the fixture (see `recipes/orca-cli.md`).
 
 Never use real private keys with this tool.

@@ -6,7 +6,7 @@
 
 1. `node bin/wallet-shim.mjs --address 0x... --out shim.out.js` で JS を作る
 2. 対象ページをタブで開く（`navigate`）
-3. `javascript_tool` に `shim.out.js` の中身をそのまま渡して実行する。ファイルが大きいときは `--format base64` で出力し、`(0, eval)(atob("<base64>"))` を実行する
+3. `javascript_tool` に `shim.out.js` の中身をそのまま渡して実行する。ファイルが大きいときは `--format base64` で出力し、`(0, eval)(atob("<base64>"))` を実行する。もう一つの手として、シムをローカルサーバー（`npx serve <dir> -l 3999` 等）で配信し、`document.head.appendChild(Object.assign(document.createElement('script'), { src: 'http://localhost:3999/shim.out.js' }))` で読み込む方法がある（`<script src>` は CORS の対象外。Orca 内蔵ブラウザで実証済み、`recipes/orca-cli.md` 参照）
 4. `javascript_tool` で `window.__WALLET_SHIM__.config.address` を読んで注入を確認する
 5. ページの Connect ボタンを押す。ウォレット一覧に MetaMask が出るのでそれを選ぶ
 

@@ -82,3 +82,5 @@ Chrome の実行パスは既定で `~/.agent-browser/browsers/chrome-152.0.7977.
 ---
 
 最終確認: 2026-09-18、puppeteer-core 25.x + Chrome 152.0.7977.54（agent-browser 同梱バイナリを流用）で自動 E2E（`npm run e2e`）を実行し、Section A（ロード前注入）・Section B（ロード後注入）ともに `#status` が `DONE`、`calls` に `eth_requestAccounts, eth_chainId, personal_sign, eth_sendTransaction, eth_getTransactionReceipt` を全て確認（`--override eth_blockNumber` は不要、公開 Sepolia RPC への到達で完走）。このマシンでは agent-browser 0.37.1 経由の手順（セクション2〜5）はコマンド構文としては `--help`/`skills get core --full` で確認済みだが、`open --init-script` 実行中にデーモンがハングし（`session list` はセッションを "Active" と報告し続けるが、コマンドの応答が10分以上返らず、後続の `close`（セッション指定）も応答なし）、実機での完走確認には至らなかった。デーモン/Chrome プロセスを強制終了して復旧を試みることはせず（他のユーザーセッションを巻き込む事故を避けるため）、代わりに上記の puppeteer-core 経由の自動 E2E で動作を検証した。
+
+追記（2026-09-19）: Orca 1.4.205 の内蔵ブラウザ（`orca tab create` → `orca eval` で `<script src>` 注入 → JS でクリック）でも、フィクスチャに対して `detected: MetaMask` → 接続 → 署名 → 送信 → 合成レシート（実 Sepolia RPC のブロック番号）まで `DONE` を確認。`orca snapshot` / `click` / `wait` は内部の agent-browser ヘルパーが stale で `browser_owner_unavailable` になったため使わなかった。手順は `recipes/orca-cli.md`。

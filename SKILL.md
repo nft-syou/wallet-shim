@@ -23,6 +23,7 @@ allowed-tools: Bash(node:*), Bash(npx:*)
    - `recipes/agent-browser.md`（`open --init-script` が最も確実）
    - `recipes/playwright.md` / `recipes/puppeteer.md`
    - `recipes/claude-in-chrome.md`（ロード後注入のみ）
+   - `recipes/orca-cli.md`（Orca 内蔵ブラウザ。`orca eval` + `<script src>` によるロード後注入。実証済み）
    - `recipes/devtools.md`
 4. **接続を確認する**: eval で `window.__WALLET_SHIM__.calls.some(c => c.method === 'eth_requestAccounts')`
 5. **操作後の検証**: `window.__WALLET_SHIM__.txs` に送信された tx（to / value / data）が入る。これが「実 TX の代わりの検証点」
