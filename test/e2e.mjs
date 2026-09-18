@@ -23,6 +23,11 @@ const EXPECTED_METHODS = [
   'eth_getTransactionReceipt',
 ];
 
+// Never echo shim source or keys: cap length and redact anything that looks like a private key.
+function redact(msg) {
+  return String(msg ?? '').replace(/0x[0-9a-fA-F]{64}/g, '0x[redacted]').slice(0, 300);
+}
+
 const chromePath =
   process.env.WALLET_SHIM_CHROME ||
   join(homedir(), '.agent-browser', 'browsers', 'chrome-152.0.7977.54', 'chrome.exe');
@@ -79,7 +84,11 @@ function checkMethods(methods) {
 
 async function runSectionA(browser) {
   const page = await browser.newPage();
-  await page.evaluateOnNewDocument(shimSource);
+  try {
+    await page.evaluateOnNewDocument(shimSource);
+  } catch {
+    throw new Error('load-before injection failed (details redacted)');
+  }
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 
   await waitFor(page, () => document.getElementById('log')?.textContent?.includes('detected: MetaMask'), {
@@ -109,7 +118,11 @@ async function runSectionB(browser) {
   const preInjectLog = await page.evaluate(() => document.getElementById('log')?.textContent ?? '');
   const alreadyDetected = preInjectLog.includes('detected:');
 
-  await page.evaluate(shimSource);
+  try {
+    await page.evaluate(shimSource);
+  } catch {
+    throw new Error('load-after injection failed (details redacted)');
+  }
 
   await waitFor(page, () => document.getElementById('log')?.textContent?.includes('detected: MetaMask'), {
     timeoutMs: 20000,
@@ -160,7 +173,7 @@ try {
     console.log('\n[e2e] OK: both sections reached DONE with all expected methods.');
   }
 } catch (err) {
-  console.error(`\n[e2e] ERROR: ${err.message}`);
+  console.error(`\n[e2e] ERROR: ${redact(err.message)}`);
   exitCode = 1;
 } finally {
   if (browser) await browser.close();
