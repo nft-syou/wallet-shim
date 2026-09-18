@@ -96,6 +96,112 @@ export function createEvmHandlers({ state, config, emitter, passthrough, signer 
     wallet_watchAsset: async () => true,
   };
 
+  // ---------- transactions (dry run: nothing is broadcast) ----------
+
+  const ZERO_BLOOM = '0x' + '0'.repeat(512);
+
+  function findTx(hash) {
+    if (typeof hash !== 'string') return null;
+    return state.txs.find((t) => t.hash.toLowerCase() === hash.toLowerCase()) ?? null;
+  }
+
+  function recordTx(tx) {
+    const hash = '0x' + keccakHex(utf8ToBytes(`wallet-shim:tx:${state.nonce++}:${JSON.stringify(tx)}`));
+    const entry = { hash, tx, at: Date.now() };
+    state.txs.push(entry);
+    return entry;
+  }
+
+  function txParam(params) {
+    const tx = params?.[0];
+    if (!tx || typeof tx !== 'object') throw errors.invalidParams('Expected [transaction]');
+    const withFrom = { ...tx, from: tx.from ?? state.accounts[0] };
+    assertOwner(withFrom.from);
+    return withFrom;
+  }
+
+  async function currentBlockNumber() {
+    try {
+      const bn = await passthrough('eth_blockNumber', []);
+      return typeof bn === 'string' ? bn : '0x1';
+    } catch {
+      return '0x1';
+    }
+  }
+
+  function fakeBlockHash(blockNumber) {
+    return '0x' + keccakHex(utf8ToBytes(`wallet-shim:block:${blockNumber}`));
+  }
+
+  Object.assign(handlers, {
+    eth_sendTransaction: async (params) => recordTx(txParam(params)).hash,
+
+    eth_sendRawTransaction: async (params) => {
+      const raw = params?.[0];
+      if (typeof raw !== 'string') throw errors.invalidParams('Expected [rawTransaction]');
+      const hash = '0x' + keccakHex(toBytes(raw));
+      state.txs.push({ hash, tx: { raw, from: state.accounts[0] }, at: Date.now() });
+      return hash;
+    },
+
+    eth_signTransaction: async (params) => {
+      const tx = txParam(params);
+      return '0x' + keccakHex(utf8ToBytes(`wallet-shim:signed-tx:${JSON.stringify(tx)}`));
+    },
+
+    eth_getTransactionReceipt: async (params) => {
+      const rec = findTx(params?.[0]);
+      if (!rec) return passthrough('eth_getTransactionReceipt', params);
+      const blockNumber = await currentBlockNumber();
+      return {
+        transactionHash: rec.hash,
+        transactionIndex: '0x0',
+        blockHash: fakeBlockHash(blockNumber),
+        blockNumber,
+        from: rec.tx.from ?? state.accounts[0],
+        to: rec.tx.to ?? null,
+        cumulativeGasUsed: '0x5208',
+        gasUsed: '0x5208',
+        effectiveGasPrice: rec.tx.gasPrice ?? rec.tx.maxFeePerGas ?? '0x1',
+        contractAddress: null,
+        logs: [],
+        logsBloom: ZERO_BLOOM,
+        status: '0x1',
+        type: rec.tx.type ?? '0x2',
+      };
+    },
+
+    eth_getTransactionByHash: async (params) => {
+      const rec = findTx(params?.[0]);
+      if (!rec) return passthrough('eth_getTransactionByHash', params);
+      const blockNumber = await currentBlockNumber();
+      const idx = state.txs.indexOf(rec);
+      return {
+        hash: rec.hash,
+        blockHash: fakeBlockHash(blockNumber),
+        blockNumber,
+        transactionIndex: '0x0',
+        from: rec.tx.from ?? state.accounts[0],
+        to: rec.tx.to ?? null,
+        value: rec.tx.value ?? '0x0',
+        gas: rec.tx.gas ?? '0x5208',
+        gasPrice: rec.tx.gasPrice ?? rec.tx.maxFeePerGas ?? '0x1',
+        maxFeePerGas: rec.tx.maxFeePerGas ?? '0x1',
+        maxPriorityFeePerGas: rec.tx.maxPriorityFeePerGas ?? '0x1',
+        input: rec.tx.data ?? rec.tx.input ?? '0x',
+        nonce: '0x' + idx.toString(16),
+        type: rec.tx.type ?? '0x2',
+        chainId: state.chainId,
+        v: '0x1',
+        r: '0x' + keccakHex(utf8ToBytes(`r:${rec.hash}`)),
+        s: '0x' + keccakHex(utf8ToBytes(`s:${rec.hash}`)),
+      };
+    },
+
+    eth_estimateGas: async (params) =>
+      config.estimateGas === 'passthrough' ? passthrough('eth_estimateGas', params) : config.estimateGas,
+  });
+
   // Transactions (Task 8) and signing (Task 9) extend `handlers` below.
   return { handlers, setChainId, setAccounts, disconnect, connect, assertOwner, sameAddress };
 }
