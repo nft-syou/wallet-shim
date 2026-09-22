@@ -1,4 +1,4 @@
-/* wallet-shim v0.1.1 - fake EIP-1193 provider for dApp browser automation. Do not use with real keys. */
+/* wallet-shim v0.1.2 - fake EIP-1193 provider for dApp browser automation. Do not use with real keys. */
 (() => {
   var __defProp = Object.defineProperty;
   var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -3449,7 +3449,7 @@ ${body.length}`);
   }
 
   // src/version.js
-  var VERSION = true ? "0.1.1" : "dev";
+  var VERSION = true ? "0.1.2" : "dev";
 
   // src/chains/evm/provider.js
   function createEvmProvider({ config, env }) {

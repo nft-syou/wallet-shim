@@ -2,7 +2,9 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.1.1] - 2026-09-22
+## [0.1.2] - 2026-09-22
+
+> 0.1.1 was never released: the registry wedged that version number in a phantom "staged" state ([npm/cli#9889](https://github.com/npm/cli/issues/9889)), so the same changes ship as 0.1.2.
 
 ### Changed
 - The agent skill now lives in `skills/wallet-shim/` (SKILL.md + injection recipes only) so `npx skills add nft-syou/wallet-shim` copies 7 files instead of the whole repository.

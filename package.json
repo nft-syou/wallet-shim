@@ -1,6 +1,6 @@
 {
   "name": "wallet-shim",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Fake EIP-1193 (MetaMask-compatible) provider for dApp browser automation. Injects a connected wallet, dry-runs transactions.",
   "type": "module",
   "license": "MIT",
