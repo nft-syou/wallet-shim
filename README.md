@@ -2,6 +2,17 @@
 
 Fake EIP-1193 / EIP-6963 provider (MetaMask-compatible) for dApp browser automation. Injects a "connected" wallet, signs with a throwaway key or fakes signatures for an arbitrary address, and dry-runs transactions (records them, returns a hash and a synthesized receipt, never broadcasts).
 
+## Install as an agent skill
+
+```bash
+npx skills add nft-syou/wallet-shim          # picks the agents you have installed
+npx skills add nft-syou/wallet-shim -a claude-code -y
+```
+
+The installed skill ships `dist/shim.js`, so address mode (`--address 0x...`) works immediately. Key modes (`--generate-key`, `--private-key-file`) need `@noble/curves` once: run `npm install` inside the installed skill directory. Install from the GitHub source rather than a local checkout; a local-path install copies `node_modules` and any `.wallet-shim/` keys along with it.
+
+## Develop
+
 ```bash
 npm install
 npm run build                      # dist/shim.js
