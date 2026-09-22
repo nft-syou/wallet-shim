@@ -9,7 +9,14 @@ npx skills add nft-syou/wallet-shim          # picks the agents you have install
 npx skills add nft-syou/wallet-shim -a claude-code -y
 ```
 
-The installed skill ships `dist/shim.js`, so address mode (`--address 0x...`) works immediately. Key modes (`--generate-key`, `--private-key-file`) need `@noble/curves` once: run `npm install` inside the installed skill directory. Install from the GitHub source rather than a local checkout; a local-path install copies `node_modules` and any `.wallet-shim/` keys along with it.
+The skill's instructions call the CLI through npm, so nothing else needs installing:
+
+```bash
+npx wallet-shim@latest --generate-key --chain sepolia --out shim.out.js
+npx wallet-shim@latest --address 0xYourAddress --chain mainnet --out shim.out.js
+```
+
+The installed skill also ships `bin/` + `dist/shim.js` as an offline fallback: address mode works from there immediately; key modes need one `npm install` inside the skill directory. Install the skill from the GitHub source rather than a local checkout; a local-path install copies `node_modules` and any `.wallet-shim/` keys along with it.
 
 ## Develop
 

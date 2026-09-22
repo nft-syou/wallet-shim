@@ -16,9 +16,10 @@ allowed-tools: Bash(node:*), Bash(npx:*)
    - `--chain sepolia` のように対象チェーンを合わせる。dApp が要求するチェーンと違うと `wallet_switchEthereumChain` が飛ぶ（既知チェーンなら自動で追従する）
 2. **JS を得る**
    ```bash
-   node <skill-dir>/bin/wallet-shim.mjs --generate-key --chain sepolia --out <scratch>/shim.out.js --print-config
+   npx wallet-shim@latest --generate-key --chain sepolia --out <scratch>/shim.out.js --print-config
    ```
-   stderr に接続アドレスが出る。鍵は `.wallet-shim/` に保存される。鍵モード（`--generate-key` / `--private-key` / `--private-key-file`）は noble（`@noble/curves` / `@noble/hashes`）を使うため、このリポジトリで一度 `npm install` を実行しておく必要がある。`--address` 指定のみのアドレスモードは `npm install` なしでも動く
+   stderr に接続アドレスが出る。鍵はカレントディレクトリの `.wallet-shim/` に保存される。npm 版は依存（`@noble/curves` / `@noble/hashes`）を同梱するので鍵モードもそのまま動く。
+   npm に届かない環境では、スキル同梱の CLI を直接使う: `node <skill-dir>/bin/wallet-shim.mjs …`（アドレスモードはそのまま動く。鍵モードは `<skill-dir>` で一度 `npm install` が必要）
 3. **注入する**: 使っているツールのレシピを読む
    - `recipes/agent-browser.md`（`open --init-script` が最も確実）
    - `recipes/playwright.md` / `recipes/puppeteer.md`

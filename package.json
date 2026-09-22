@@ -24,7 +24,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "fixture": "node scripts/build-fixture.mjs && serve test/fixture -l 3000",
-    "e2e": "node test/e2e.mjs"
+    "e2e": "node test/e2e.mjs",
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
     "@noble/curves": "^2.4.0",
@@ -36,5 +37,28 @@
     "serve": "^14.2.6",
     "viem": "^2.56.8",
     "vitest": "^5.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nft-syou/wallet-shim.git"
+  },
+  "homepage": "https://github.com/nft-syou/wallet-shim#readme",
+  "bugs": {
+    "url": "https://github.com/nft-syou/wallet-shim/issues"
+  },
+  "keywords": [
+    "ethereum",
+    "eip-1193",
+    "eip-6963",
+    "metamask",
+    "wallet",
+    "mock",
+    "dapp",
+    "e2e",
+    "browser-automation",
+    "agent-skill"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }
