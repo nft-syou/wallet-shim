@@ -19,7 +19,7 @@ allowed-tools: Bash(node:*), Bash(npx:*)
    npx wallet-shim@latest --generate-key --chain sepolia --out <scratch>/shim.out.js --print-config
    ```
    stderr に接続アドレスが出る。鍵はカレントディレクトリの `.wallet-shim/` に保存される。npm 版は依存（`@noble/curves` / `@noble/hashes`）を同梱するので鍵モードもそのまま動く。
-   npm に届かない環境では、スキル同梱の CLI を直接使う: `node <skill-dir>/bin/wallet-shim.mjs …`（アドレスモードはそのまま動く。鍵モードは `<skill-dir>` で一度 `npm install` が必要）
+   npm に届かない環境では、リポジトリ（https://github.com/nft-syou/wallet-shim）を clone して `node bin/wallet-shim.mjs …` を使う（アドレスモードはそのまま動く。鍵モードは clone 先で一度 `npm install` が必要）
 3. **注入する**: 使っているツールのレシピを読む
    - `recipes/agent-browser.md`（`open --init-script` が最も確実）
    - `recipes/playwright.md` / `recipes/puppeteer.md`
@@ -47,7 +47,7 @@ allowed-tools: Bash(node:*), Bash(npx:*)
 - **偽署名モードは検証に通らない**。SIWE ログインが必要なら鍵モードにする
 - **ロード前注入が原則**。wagmi 等は起動時に走査するので、ロード後注入で拾われないときはレシピ末尾のフォールバックに従う
 - 本物の MetaMask が入ったプロファイルでは `window.ethereum` を上書きする（`replaceExisting: false` で回避可）
-- agent-browser のデーモンが `open --init-script` で固まる環境がある（このプロジェクトを作成したマシンで発生）。1 分待って返らなければ `recipes/puppeteer.md` に切り替える。`test/e2e.mjs` が動作確認済みの puppeteer-core 実装
+- agent-browser のデーモンが `open --init-script` で固まる環境がある（このプロジェクトを作成したマシンで発生）。1 分待って返らなければ `recipes/puppeteer.md` に切り替える。リポジトリの `test/e2e.mjs` が動作確認済みの puppeteer-core 実装
 
 ## やってはいけないこと
 
@@ -55,6 +55,6 @@ allowed-tools: Bash(node:*), Bash(npx:*)
 - `.wallet-shim/` をコミットしない（自動で gitignore される）
 - 鍵モードの出力 JS には秘密鍵が含まれる。`--out` でファイルに出し、ターミナルに流さない
 
-## 動作確認
+## 動作確認（リポジトリを clone した場合）
 
-`npm run fixture`（別ターミナル）→ `node bin/wallet-shim.mjs --generate-key --chain sepolia --out .wallet-shim/shim.out.js` → `npm run e2e`。connect → sign → send → receipt を load-before / load-after の両方の注入方式で検証する。
+`npm install` → `npm run fixture`（別ターミナル）→ `node bin/wallet-shim.mjs --generate-key --chain sepolia --out .wallet-shim/shim.out.js` → `npm run e2e`。connect → sign → send → receipt を load-before / load-after の両方の注入方式で検証する。

@@ -19,7 +19,7 @@ dApp をブラウザ自動化（agent-browser / Playwright / Puppeteer / claude-
 | トランザクション | ドライ運転のみ。偽ハッシュを返し、プロバイダ経由のレシート問い合わせには成功レシートを合成して返す。フォーク実行モードは作らない |
 | 入口 | ビルド CLI `node bin/wallet-shim.mjs`。設定を埋め込んだ単一 JS を出力する |
 | 構成 | モジュール分割 + esbuild で `dist/shim.js` に単一 IIFE としてバンドル。`dist/` はコミットする |
-| npm 公開 | 今回は行わないが、`bin` / `files` フィールドは先に書いておき後から `npx wallet-shim` にできるようにする |
+| npm 公開 | 2026-09-22 に `wallet-shim@0.1.0` として公開済み。スキルは `npx wallet-shim@latest` で CLI を呼ぶ（`files` は `bin` / `dist` / `src` / `README.md`） |
 
 ## ファイル構成
 
@@ -55,13 +55,16 @@ wallet-shim/
 ├── scripts/
 │   ├── build.mjs              # esbuild で src/index.js → dist/shim.js（IIFE）
 │   └── build-fixture.mjs      # esbuild で viem をローカルバンドルし test/fixture/vendor/viem.js を生成
-├── recipes/
-│   ├── agent-browser.md      # --init-script / addinitscript / eval の3経路
-│   ├── playwright.md         # addInitScript
-│   ├── puppeteer.md          # evaluateOnNewDocument
-│   ├── claude-in-chrome.md   # javascript_tool（ロード後注入の制約つき）
-│   ├── orca-cli.md           # Orca 内蔵ブラウザ。orca eval + <script src>（ロード後注入、実証済み）
-│   └── devtools.md           # 手貼り
+├── skills/
+│   └── wallet-shim/          # `npx skills add nft-syou/wallet-shim` でコピーされるのはこの配下だけ
+│       ├── SKILL.md          # スキル本体（CLI は npx wallet-shim@latest を呼ぶ）
+│       └── recipes/
+│           ├── agent-browser.md      # --init-script / addinitscript / eval の3経路
+│           ├── playwright.md         # addInitScript
+│           ├── puppeteer.md          # evaluateOnNewDocument
+│           ├── claude-in-chrome.md   # javascript_tool（ロード後注入の制約つき）
+│           ├── orca-cli.md           # Orca 内蔵ブラウザ。orca eval + <script src>（ロード後注入、実証済み）
+│           └── devtools.md           # 手貼り
 ├── test/
 │   ├── unit/                  # vitest。provider.request() を Node 上で直接叩く
 │   │   └── helpers/evm.js     # 署名検証などユニットテスト共通ヘルパー
@@ -78,7 +81,8 @@ wallet-shim/
 
 - `dist/shim.js` をコミットするので、`--address` 指定での利用は npm install 不要
 - core は EVM を知らない。チェーン追加は `src/chains/<name>/` を足して `index.js` に登録する
-- 注入手段はすべて `recipes/`。SKILL.md は共通フローだけを書く
+- 注入手段はすべて `skills/wallet-shim/recipes/`。SKILL.md は共通フローだけを書く
+- スキル（`skills/wallet-shim/`）と npm パッケージ（`bin` / `dist` / `src`）は役割を分ける。スキルは手順書とレシピだけを持ち、CLI は `npx wallet-shim@latest` で npm から取る
 
 ## シムの振る舞い（EVM）
 
@@ -271,7 +275,7 @@ window.__WALLET_SHIM_CONFIG__ = {"chain":"evm","address":"0x…","chainId":"0x1"
 1. トリガー: 「ウォレット接続で止まる」「MetaMask なしで dApp を動かしたい」「接続済み状態で E2E」「dApp のスクショを撮りたいがウォレットが要る」
 2. 手順
    1. 設定を決める（アドレス指定か鍵生成か、チェーン、RPC）
-   2. `node bin/wallet-shim.mjs … --out <scratchpad>/shim.out.js --print-config` で JS を得る
+   2. `npx wallet-shim@latest … --out <scratchpad>/shim.out.js --print-config` で JS を得る（npm 非接続時は clone した `node bin/wallet-shim.mjs`）
    3. 使っているブラウザツールの `recipes/<tool>.md` を読み、ロード前注入を試す
    4. 接続後に `window.__WALLET_SHIM__.calls` を eval で読み、`eth_requestAccounts` が記録されたことを確認する
    5. 操作後は `__WALLET_SHIM__.txs` で送信された tx の中身を検証する
@@ -316,11 +320,11 @@ Orca 内蔵ブラウザ（`orca tab create` / `orca eval`）経由のロード�
 
 - `npm test` が通り、`npm run build` で `dist/shim.js` が再生成される
 - `npm run e2e` が load-before / load-after の両方で DONE に到達し、`calls` に eth_requestAccounts / eth_chainId / personal_sign / eth_sendTransaction / eth_getTransactionReceipt が含まれる（agent-browser 経由の手順は `recipes/` と `test/e2e.md` に文書化してあるが、このマシンでは未検証）
-- `recipes/` の5ファイルと SKILL.md が揃い、`~/.agents/skills/wallet-shim` から参照できる
+- `skills/wallet-shim/` に SKILL.md とレシピ 6 本が揃い、`~/.agents/skills/wallet-shim` から参照できる。`npx skills add nft-syou/wallet-shim` でコピーされるのはその 7 ファイルだけ
 
 ## スコープ外
 
 - フォーク実行モード（Anvil への転送）
 - 複数ウォレットの同時偽装、`window.ethereum.providers`
 - Solana 等の他チェーン（構造だけ用意する）
-- npm 公開
+- npm 公開（→ 2026-09-22 に実施済み。上の決定事項を参照）
