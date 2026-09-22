@@ -25,7 +25,6 @@ dApp をブラウザ自動化（agent-browser / Playwright / Puppeteer / claude-
 
 ```
 wallet-shim/
-├── SKILL.md                  # スキル本体（エージェント向け手順、トリガー語、注意事項）
 ├── README.md                 # クイックスタートと検証状況
 ├── package.json              # type: module。deps: @noble/curves, @noble/hashes。devDeps: esbuild, vitest, puppeteer-core, viem, serve
 ├── bin/
