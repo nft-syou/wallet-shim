@@ -15,8 +15,8 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         node: [20, 22]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -27,3 +27,22 @@ jobs:
       - run: npm test
       - name: CLI smoke (address mode)
         run: node bin/wallet-shim.mjs --address 0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf --chain sepolia --quiet --out shim.out.js
+
+  dependencies:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lockfile matches package.json
+        run: npm ls --omit=dev
+      - name: Runtime dependencies (moderate+ fails)
+        run: npm audit --omit=dev --audit-level=moderate
+      - name: All dependencies (high+ fails)
+        run: npm audit --audit-level=high
+      - name: Report outdated packages (informational)
+        run: npm outdated || true
